@@ -1,0 +1,247 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Portfolio &amp; Market Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#0d1117;color:#e6edf3}
+.wrap{max-width:1280px;margin:0 auto;padding:24px;display:none}
+h1{margin:0;font-size:24px}.sub{color:#8b949e;font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:8px;margin:20px 0 16px}
+.tab{padding:9px 18px;background:#161b22;border:1px solid #30363d;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:#8b949e}
+.tab.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.cards{display:flex;gap:14px;margin:0 0 20px;flex-wrap:wrap}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 18px;flex:1;min-width:140px}
+.card .v{font-size:24px;font-weight:700}.card .l{color:#8b949e;font-size:12px;margin-top:3px}
+.panel{display:none}.panel.on{display:block}
+h2{font-size:16px;margin:22px 0 10px;color:#c9d1d9}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.box{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:10px 14px}
+table{width:100%;border-collapse:collapse;background:#161b22;border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;text-align:right;font-size:12.5px;border-bottom:1px solid #21262d;white-space:nowrap}
+th{background:#21262d;cursor:pointer;user-select:none;color:#c9d1d9;position:sticky;top:0}
+th:first-child,td:first-child{text-align:left;font-weight:600}
+td.l,th.l{text-align:left}
+tr:hover{background:#1c2128}
+.pos{color:#3fb950}.neg{color:#f85149}.dim{color:#8b949e}
+.held{box-shadow:inset 3px 0 0 #d29922}
+.tag,.read{padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700}
+.BUYWATCH,.KEEP{background:#10391f;color:#3fb950}
+.EXTENDED,.HOLD{background:#3d2e0a;color:#d29922}
+.AVOID,.TRIMREPLACE,.REVIEW{background:#3d1418;color:#f85149}
+.NEUTRAL{background:#21262d;color:#8b949e}
+.foot{color:#8b949e;font-size:11px;margin-top:22px;line-height:1.6;border-top:1px solid #21262d;padding-top:12px}
+.note{background:#10391f33;border:1px solid #1f6feb44;border-radius:8px;padding:10px 14px;font-size:13px;margin:10px 0;line-height:1.5}
+/* password gate */
+#gate{position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999}
+.lock{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:36px 40px;width:330px;text-align:center}
+.lock h3{margin:0 0 6px;font-size:20px}.lock p{color:#8b949e;font-size:12.5px;margin:0 0 18px}
+.lock input{width:100%;padding:11px 13px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;font-size:15px;text-align:center;letter-spacing:2px}
+.lock input:focus{outline:none;border-color:#1f6feb}
+.lock button{width:100%;margin-top:12px;padding:11px;background:#1f6feb;border:0;border-radius:8px;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.lock button:hover{background:#388bfd}
+.lock .err{color:#f85149;font-size:12.5px;margin-top:12px;min-height:16px}
+</style></head><body>
+
+<div id="gate"><div class="lock">
+<h3>🔒 Private Dashboard</h3>
+<p>Your holdings are encrypted. Enter the password to view.</p>
+<input id="pw" type="password" placeholder="password" autocomplete="off" autofocus>
+<button id="unlock">Unlock</button>
+<div class="err" id="err"></div>
+</div></div>
+
+<div class="wrap" id="wrap">
+<h1>📊 Portfolio &amp; Market Dashboard</h1>
+<div class="sub" id="sub"></div>
+<div class="tabs">
+<div class="tab on" data-p="port">🧰 My Portfolio</div>
+<div class="tab" data-p="stocks">📈 Stocks (Nifty 500)</div>
+<div class="tab" data-p="funds">💰 Mutual Funds</div>
+</div>
+
+<div class="panel on" id="port">
+<div class="cards" id="psum"></div>
+<div class="note" id="diag"></div>
+<h2>My Stocks — keep / hold / trim (sorted worst P&amp;L first)</h2>
+<table id="myst"><thead><tr>
+<th class="l" data-k="sym">Stock</th><th class="l" data-k="sector">Sector</th><th data-k="qty">Qty</th>
+<th data-k="avg">Avg ₹</th><th data-k="px">LTP ₹</th><th data-k="plpct">P&amp;L %</th><th data-k="pl">P&amp;L ₹</th>
+<th data-k="wt">Weight %</th><th data-k="pctile">Rank %ile</th><th data-k="tag">Signal</th>
+<th data-k="read">Read</th><th class="l" data-k="rep">Replace?</th></tr></thead><tbody></tbody></table>
+<h2>My Mutual Funds</h2>
+<table id="mymf"><thead><tr>
+<th class="l" data-k="name">Fund</th><th class="l" data-k="cat">Category</th><th data-k="avg">Avg NAV</th>
+<th data-k="nav">NAV</th><th data-k="plpct">P&amp;L %</th><th data-k="pl">P&amp;L ₹</th><th data-k="wt">Weight %</th>
+<th data-k="r1y">1Y %</th><th data-k="pctile">Cat %ile</th><th data-k="read">Read</th></tr></thead><tbody></tbody></table>
+<div class="grid2" style="margin-top:18px">
+<div class="box"><h2 style="margin-top:4px">Stock concentration (sector)</h2><div id="secchart"></div></div>
+<div class="box"><h2 style="margin-top:4px">MF allocation (category)</h2><div id="catchart"></div></div>
+</div>
+</div>
+
+<div class="panel" id="stocks">
+<div class="cards" id="ssum"></div>
+<div class="grid2">
+<div class="box"><h2 style="margin-top:4px">🏆 Top 10 — Today</h2><div id="td"></div></div>
+<div class="box"><h2 style="margin-top:4px">🏆 Top 10 — This Week</h2><div id="tw"></div></div>
+</div>
+<div class="grid2" style="margin-top:16px">
+<div class="box"><h2 style="margin-top:4px">🏆 Top 10 — This Month</h2><div id="tm"></div></div>
+<div class="box"><h2 style="margin-top:4px">🛡️ Stable Winners (quiet compounders)</h2><div id="stb"></div></div>
+</div>
+<h2>Full Nifty 500 screen — click any column to sort · <span style="color:#d29922">amber bar = you hold it</span></h2>
+<table id="alltbl"><thead><tr>
+<th class="l" data-k="sym">Stock</th><th class="l" data-k="sector">Sector</th><th data-k="px">₹</th>
+<th data-k="r1d">1D</th><th data-k="r1w">1W</th><th data-k="r1m">1M</th><th data-k="r3m">3M</th>
+<th data-k="r6m">6M</th><th data-k="r1y">1Y</th><th data-k="adx">ADX</th><th data-k="vol">Vol</th>
+<th data-k="sharpe">Sharpe</th><th data-k="maxdd">MaxDD</th><th data-k="score">Score</th>
+<th data-k="pctile">%ile</th><th data-k="tag">Signal</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="panel" id="funds">
+<div class="note">Indian MF NAVs are end-of-day (AMFI). Returns &gt;1Y are annualised (CAGR). Universe = your funds + curated category leaders. Amber bar = you hold it.</div>
+<table id="ftbl"><thead><tr>
+<th class="l" data-k="name">Fund</th><th class="l" data-k="cat">Category</th><th data-k="nav">NAV</th>
+<th data-k="r1m">1M</th><th data-k="r3m">3M</th><th data-k="r6m">6M</th><th data-k="r1y">1Y</th>
+<th data-k="r3y">3Y</th><th data-k="r5y">5Y</th><th data-k="sharpe">Sharpe</th>
+<th data-k="maxdd">MaxDD</th><th data-k="pctile">Cat %ile</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="foot" id="foot"></div>
+</div>
+
+<script>
+/*__DATA__*/
+
+// ---------- password gate: decrypt the embedded holdings ----------
+async function decryptPayload(enc, password){
+  const b64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+  const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt:b64(enc.salt), iterations:enc.iter, hash:'SHA-256'},
+    baseKey, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(enc.iv)}, key, b64(enc.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function tryUnlock(){
+  const pw=document.getElementById('pw').value;
+  const err=document.getElementById('err'); err.textContent='';
+  try{
+    const DATA=await decryptPayload(ENC, pw);
+    document.getElementById('gate').style.display='none';
+    document.getElementById('wrap').style.display='block';
+    boot(DATA);
+  }catch(e){ err.textContent='Wrong password. Try again.'; document.getElementById('pw').select(); }
+}
+document.getElementById('unlock').onclick=tryUnlock;
+document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryUnlock(); });
+
+// ---------- everything below runs only after a correct password ----------
+function boot(DATA){
+const S=DATA.summary;
+document.getElementById('sub').innerHTML=`Data as of <b>${S.asof}</b> · price bar <b>${S.last_bar}</b> · ${S.n_screened} stocks screened · EOD/delayed data`;
+const pct=v=>v==null?'<span class="dim">—</span>':`<span class="${v>=0?'pos':'neg'}">${v>0?'+':''}${v}</span>`;
+const inr=v=>(v<0?'-₹':'₹')+Math.abs(v).toLocaleString('en-IN');
+const cl=t=>(t||'').replace(/[^A-Z]/gi,'');
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');document.getElementById(t.dataset.p).classList.add('on');
+});
+
+document.getElementById('psum').innerHTML=`
+<div class="card"><div class="v">${inr(S.t_pres)}</div><div class="l">Total value (in ${inr(S.t_inv)})</div></div>
+<div class="card"><div class="v ${S.t_pl>=0?'pos':'neg'}">${inr(S.t_pl)}</div><div class="l">Total P&L (${S.t_plpct}%)</div></div>
+<div class="card"><div class="v ${S.s_pl>=0?'pos':'neg'}">${S.s_plpct}%</div><div class="l">Stocks (${inr(S.s_pres)})</div></div>
+<div class="card"><div class="v ${S.m_pl>=0?'pos':'neg'}">${S.m_plpct}%</div><div class="l">Mutual funds (${inr(S.m_pres)})</div></div>`;
+
+(function(){
+  const ms=DATA.my_stocks;
+  const losers=ms.filter(x=>x.plpct<-15).sort((a,b)=>a.plpct-b.plpct);
+  const topsec=Object.entries(DATA.sector_w)[0];
+  let h=`<b>What's dragging your stocks:</b> `;
+  h+=losers.slice(0,5).map(x=>`${x.sym} ${pct(x.plpct)}`).join(' · ');
+  h+=`<br><b>Concentration:</b> biggest sector bet is <b>${topsec[0]}</b> at ${topsec[1]}% of equity. `;
+  const trim=ms.filter(x=>x.read=='TRIM/REPLACE').map(x=>x.sym);
+  if(trim.length)h+=`Engine flags <b>${trim.join(', ')}</b> for trim/replace (weak rank + downtrend).`;
+  document.getElementById('diag').innerHTML=h;
+})();
+
+function rowMyStock(r){return `<tr class="${r.held?'held':''}">
+<td>${r.sym}</td><td class="l dim">${r.sector}</td><td>${r.qty}</td><td>${r.avg}</td><td>${r.px}</td>
+<td>${pct(r.plpct)}</td><td>${pct(r.pl)}</td><td>${r.wt}</td>
+<td>${r.pctile==null?'<span class=dim>—</span>':r.pctile}</td>
+<td><span class="tag ${cl(r.tag)}">${r.tag}</span></td>
+<td><span class="read ${cl(r.read)}">${r.read}</span></td>
+<td class="l">${r.rep?'→ '+r.rep:'<span class=dim>—</span>'}</td></tr>`;}
+document.querySelector('#myst tbody').innerHTML=DATA.my_stocks.map(rowMyStock).join('');
+
+function rowMyMf(r){return `<tr>
+<td>${r.name}</td><td class="l dim">${r.cat}</td><td>${r.avg}</td><td>${r.nav}</td>
+<td>${pct(r.plpct)}</td><td>${pct(r.pl)}</td><td>${r.wt}</td><td>${pct(r.r1y)}</td>
+<td>${r.pctile==null?'<span class=dim>—</span>':r.pctile}</td>
+<td><span class="read ${cl(r.read)}">${r.read}</span></td></tr>`;}
+document.querySelector('#mymf tbody').innerHTML=DATA.my_mf.map(rowMyMf).join('');
+
+document.getElementById('ssum').innerHTML=`
+<div class="card"><div class="v">${S.n_screened}</div><div class="l">Stocks screened</div></div>
+<div class="card"><div class="v pos">${S.n_up}</div><div class="l">In confirmed uptrend</div></div>
+<div class="card"><div class="v">${S.breadth}%</div><div class="l">Market breadth</div></div>
+<div class="card"><div class="v">${S.top}</div><div class="l">Top composite score</div></div>`;
+
+function miniList(el,rows,key){
+  document.getElementById(el).innerHTML='<table>'+rows.map(r=>`<tr class="${r.held?'held':''}">
+  <td class="l">${r.sym}${r.held?' <span class=dim>•held</span>':''}</td><td class="l dim">${r.sector}</td>
+  <td>${pct(r[key])}</td><td><span class="tag ${cl(r.tag)}">${r.tag}</span></td></tr>`).join('')+'</table>';
+}
+miniList('td',DATA.top_day,'r1d');miniList('tw',DATA.top_week,'r1w');
+miniList('tm',DATA.top_month,'r1m');
+document.getElementById('stb').innerHTML='<table>'+DATA.stable.map(r=>`<tr class="${r.held?'held':''}">
+<td class="l">${r.sym}</td><td class="l dim">${r.sector}</td><td>1Y ${pct(r.r1y)}</td>
+<td>DD ${r.maxdd}%</td><td><b>${r.stab}</b></td></tr>`).join('')+'</table>';
+
+function rowStock(r){return `<tr class="${r.held?'held':''}">
+<td>${r.sym}</td><td class="l dim">${r.sector}</td><td>${r.px}</td><td>${pct(r.r1d)}</td>
+<td>${pct(r.r1w)}</td><td>${pct(r.r1m)}</td><td>${pct(r.r3m)}</td><td>${pct(r.r6m)}</td>
+<td>${pct(r.r1y)}</td><td>${r.adx}</td><td>${r.vol}</td><td>${r.sharpe}</td><td>${r.maxdd}</td>
+<td><b>${r.score}</b></td><td>${r.pctile}</td>
+<td><span class="tag ${cl(r.tag)}">${r.tag}</span></td></tr>`;}
+document.querySelector('#alltbl tbody').innerHTML=DATA.stocks_all.map(rowStock).join('');
+
+function rowFund(r){return `<tr class="${r.held?'held':''}">
+<td>${r.name}</td><td class="l dim">${r.cat}</td><td>${r.nav}</td><td>${pct(r.r1m)}</td>
+<td>${pct(r.r3m)}</td><td>${pct(r.r6m)}</td><td>${pct(r.r1y)}</td><td>${pct(r.r3y)}</td>
+<td>${pct(r.r5y)}</td><td>${r.sharpe==null?'—':r.sharpe}</td><td>${r.maxdd==null?'—':r.maxdd}</td>
+<td>${r.pctile==null?'<span class=dim>—</span>':r.pctile}</td></tr>`;}
+document.querySelector('#ftbl tbody').innerHTML=DATA.funds_all.map(rowFund).join('');
+
+function makeSortable(tableId,data,rowFn){
+  const asc={};
+  document.querySelectorAll(`#${tableId} th`).forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;asc[k]=!asc[k];
+    const s=[...data].sort((a,b)=>{let x=a[k],y=b[k];
+      if(x==null)return 1;if(y==null)return -1;
+      return typeof x==='string'?(asc[k]?x.localeCompare(y):y.localeCompare(x)):(asc[k]?x-y:y-x);});
+    document.querySelector(`#${tableId} tbody`).innerHTML=s.map(rowFn).join('');
+  });
+}
+makeSortable('alltbl',DATA.stocks_all,rowStock);
+makeSortable('ftbl',DATA.funds_all,rowFund);
+makeSortable('myst',DATA.my_stocks,rowMyStock);
+makeSortable('mymf',DATA.my_mf,rowMyMf);
+
+const PL={paper_bgcolor:'#161b22',plot_bgcolor:'#161b22',font:{color:'#8b949e',size:11},margin:{l:10,r:10,t:10,b:10},height:300};
+Plotly.newPlot('secchart',[{labels:Object.keys(DATA.sector_w),values:Object.values(DATA.sector_w),
+  type:'pie',hole:.5,textinfo:'label+percent',textfont:{size:10}}],PL,{displayModeBar:false,responsive:true});
+Plotly.newPlot('catchart',[{labels:Object.keys(DATA.mf_cat_w),values:Object.values(DATA.mf_cat_w),
+  type:'pie',hole:.5,textinfo:'label+percent',textfont:{size:10}}],PL,{displayModeBar:false,responsive:true});
+
+document.getElementById('foot').innerHTML=`
+<b>Composite score</b> = momentum (1M/3M/6M) + risk-adjusted (Sharpe) + trend strength (ADX) − volatility, z-scored across Nifty 500, with trend-alignment bonus.
+<b>Stable winners</b> rank low-volatility, low-drawdown, consistent compounders (above 200DMA, ≥60% positive months).
+<b>BUY-WATCH</b>=trending &amp; not over-extended · <b>EXTENDED</b>=&gt;20% above 50DMA · <b>AVOID</b>=weak/downtrend.
+<b>Keep/Trim</b> on holdings blends rank-percentile + signal. Replace candidate = top-ranked same-sector stock you don't own.<br>
+⚠️ <b>EOD / ~15-min delayed free data.</b> Fundamentals (valuation, earnings quality) not yet included — momentum/risk/trend only. MF NAVs are end-of-day. This is a screening aid, <b>not investment advice</b> — size and risk-manage your own trades.`;
+} // end boot
+</script></body></html>
