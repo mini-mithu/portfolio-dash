@@ -1,3 +1,4 @@
+# Auto-updating encrypted portfolio dashboard — rebuilds + deploys on a schedule.
 name: refresh-dashboard
 
 # Runs every 5 minutes during NSE market hours (09:15–15:30 IST = 03:45–10:00 UTC),
